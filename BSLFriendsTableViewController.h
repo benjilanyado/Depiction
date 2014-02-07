@@ -7,8 +7,11 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "BSLLoginTableViewController.h"
 
-@interface BSLFriendsTableViewController : UITableViewController
+//stating that we contaitn the delegate methids defined in LoginTableVIewController
+
+@interface BSLFriendsTableViewController : UITableViewController <BSLLoginTableViewControllerDelegate>
 
 @property (nonatomic, strong) NSArray *friends;
 

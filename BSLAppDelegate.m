@@ -8,6 +8,8 @@
 
 #import "BSLAppDelegate.h"
 #import <Parse/Parse.h>
+#import "UIColor+Theme.h"
+#import "UIFont+Theme.h"
 
 @implementation BSLAppDelegate
 
@@ -54,13 +56,18 @@
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }
 
+
 #pragma mark - theme
 
 - (void)setTheme {
     
-    UIColor *color = [UIColor magentaColor];
-    
-    [[UINavigationBar appearance] setBarTintColor: color];
+    [self.window setTintColor:[UIColor themeHighlightColor]];
+    [[UIRefreshControl appearance] setTintColor:[UIColor themeHighlightColor]];
+    [[UINavigationBar appearance] setBarTintColor:[UIColor themeHighlightColor]];
+    [[UINavigationBar appearance] setTintColor:[UIColor whiteColor]];
+    [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
+    [[UINavigationBar appearance] setTitleTextAttributes:@{NSForegroundColorAttributeName : [UIColor whiteColor], NSFontAttributeName : [UIFont navigationBarFont]}];
+    [[UIBarButtonItem appearance] setTitleTextAttributes:@{NSForegroundColorAttributeName : [UIColor whiteColor], NSFontAttributeName : [UIFont themeFontOfSize:18.f]} forState:UIControlStateNormal];
 }
 
 @end

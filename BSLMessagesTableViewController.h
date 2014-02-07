@@ -8,11 +8,13 @@
 
 #import <UIKit/UIKit.h>
 
-@interface BSLMessagesTableViewController : UITableViewController
+@interface BSLMessagesTableViewController : UITableViewController <UINavigationControllerDelegate, UIImagePickerControllerDelegate>
 
+/// storres who we are having a converstaion with
 @property (nonatomic, strong) PFUser *selectedUser;
 
-@property (nonatomic, strong) NSArray   *messages;
+// add a property to store our messages
+@property (nonatomic, strong) NSMutableArray   *messages;
 
 @end
 

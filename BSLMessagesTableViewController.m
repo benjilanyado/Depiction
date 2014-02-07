@@ -10,6 +10,9 @@
 // import category for loding images asynchronosouly
 #import <AFNetworking/UIImageView+AFNetworking.h>
 
+//import our category to resize the image taken
+#import "UIImage+Resize.h"
+
 @interface BSLMessagesTableViewController ()
 
 @end
@@ -70,7 +73,7 @@
     [recipientQuery whereKey:@"sender" equalTo:self.selectedUser];
     
     [recipientQuery whereKey:@"recipient" equalTo:[PFUser currentUser]];
-
+    
     //ensure that our message object includes the sender
     
     PFQuery *superQuery = [PFQuery orQueryWithSubqueries:@[senderQuery,recipientQuery]];
@@ -81,10 +84,14 @@
         if (error) {
             //handle it
         } else {
-            self.messages = objects;
             
-            //reload table view
+            
+            //keeping a reference to the array of returned messages
+            //create a mutable copy of the array since we want to add sent messages to it
+            self.messages = [objects mutableCopy];
             [self.tableView reloadData];
+
+           
         }
     }];
     
@@ -104,7 +111,7 @@
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-
+    
     // Return the number of sections.
     return 1;
 }
@@ -207,5 +214,160 @@
  }
  
  */
+
+#pragma mark - Actions
+
+- (IBAction)cameraPressed:(id)sender {
+    
+    
+    NSLog(@"camera pressed");
+    
+    // initialise a new instance of UIImagePickerController
+    // alloc allocates some memory for this new object
+    // init sets it up for use
+    UIImagePickerController *controller = [[UIImagePickerController alloc] init];
+    
+    //ensure that we are capturing the new image with a camera
+    controller.sourceType = UIImagePickerControllerSourceTypeCamera;
+    
+    // the camera will go away and do some work for us
+    // this may take some time, and the user may even cancel it
+    // we want to be the one who is infromed whtn the user does somethng (takes pic/cancels)
+    /// WE (messagescontroler) HAVE THE LOGIC - YOU DO THE WORK AND LET US KNOW
+    // THEREFORE WE SET IT'S DELEGATE (who to report back to) as US
+    // WE'VE GOT THE LOGIC, NOW GO DO SOMETHING
+    controller.delegate = self;
+    
+    [self presentViewController:controller animated:YES completion:nil];
+    
+} // end of camera pressed method
+
+
+-(void)sendMessageWithImage:(UIImage *)image {
+    
+    //create a new instance of PFObject that corresponds to the correct class in Parse
+    PFObject *newMessage = [PFObject objectWithClassName:@"Message"];
+    
+    //set the sender as the current user
+    newMessage[@"sender"] = [PFUser currentUser];
+    
+    //set the recipient
+    newMessage[@"recipient"] = self.selectedUser;
+    
+    // setting ACL (Access Control List) on object - sets who can and can't see it
+    PFACL *messageACL = [PFACL ACL];
+    
+    // set public read access to NO
+    [messageACL setPublicReadAccess:NO];
+    
+    // set READ access
+    [messageACL setReadAccess:YES forUser:self.selectedUser];
+    
+    // make sure the WE can set information on this message (ie an IMAGE!)
+    [messageACL setWriteAccess:YES forUser:[PFUser currentUser]];
+    
+    // assign these rules that we have created to our new message object
+    newMessage.ACL = messageACL;
+    
+    //resize the image taken (and give it to use via the image argument of this method
+    //becuase it's too large to upload to Parse (for our use-case
+    
+    // create a size (widht and height) to pass to category method
+    CGSize size = CGSizeMake(640, 1138);
+    
+    //use the size we have just created
+    UIImage *resizedImage = [image resizedImage:size];
+    
+    //compressing the image - converting from bitmap to jpg - much smaller in size
+    NSData *imageData = UIImageJPEGRepresentation(resizedImage, 0.6);
+    
+    //initialise a new file object using this binary data
+    //this will upload the data to Parse
+    PFFile *imageFile = [PFFile fileWithName:@"image.jpg" data:imageData];
+    
+    //asign the file to the message object
+    newMessage[@"image"] = imageFile;
+    
+    //WE"VE MADE THE MESSAGE, WE'VE GOT THE FILE, NOW WE NEED TO ATTACH THE TWO
+    
+    //save the message to parse. Pasrse SDK handles rthe uploading of the image for us
+    // we give it a block to execute when it finishes/fails
+    [newMessage saveInBackgroundWithBlock:^(BOOL succeeded, NSError *error) {
+        
+        //check that upload was successful
+        if (error)
+        {
+            //create an alert to tell the user ther is a problem
+            UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Error", nil) message:NSLocalizedString(@"Couldn't show a message at this time", @"Shown when uplaoding") delegate:nil cancelButtonTitle:NSLocalizedString(@"cancel", nil) otherButtonTitles: nil];
+            
+            //put the alert on the screen
+            [alertView show];
+        } else {
+            
+            NSLog(@"Message sent!");
+            
+            //append new message to mutable array
+            [self.messages addObject:newMessage];
+            NSInteger row = [self.messages count] -1 ;
+            
+            // get a reference to the row that we are inserting into the table
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:0];
+            
+            //tell the table view to insert a new row at the index path that we have created
+            
+            [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationTop];
+            
+            // animate scroll to bottom            
+            [self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition: UITableViewScrollPositionBottom animated:YES];
+        };
+    }];
+    
+    
+    
+    
+    
+}
+
+#pragma mark - UIImagePickerControllerDelegate
+
+
+// these are the two delegate methods that we will use to detect if the user has done something
+- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info; {
+    
+    // info is a dictionary with a set of keys and associated objects
+    //i.e. we ask the dictionary for the imahe sna it returns the UIImange instance
+    UIImage *image = info[UIImagePickerControllerOriginalImage];
+    
+    // call out method we added above to send the image to Parse
+    [self sendMessageWithImage:image];
+    
+    NSLog(@"Taken an image");
+    
+    NSLog(@"apple");
+    
+    //this illustrates blcoks (callbacks) and how they can be used to execute code after something has happened
+    //this will read apple >> orange >> banana in the console log.
+    //the caret (^) is used to define the block (callback) - a chunk of code that can be treated as an object - it's an argument on a method
+    
+    [self dismissViewControllerAnimated:YES completion:^{
+        
+        NSLog(@"banana");
+    }];
+    
+    NSLog(@"orange");
+    
+}
+
+- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker; {
+    
+    NSLog(@"Cancelled");
+    
+}
+
+
+
+
+
+
 
 @end

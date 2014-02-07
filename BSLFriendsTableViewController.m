@@ -40,7 +40,10 @@
 
 - (void)viewDidAppear:(BOOL)animated {
     
-    // get a reference ti te currently logged in user - this should be nil
+        
+    // temporarily assume there is no logged in user
+    //PFUser *currentUser = nil;
+    
     PFUser *currentUser = [PFUser currentUser];
     
     if (currentUser) {
@@ -49,19 +52,9 @@
 
     } else {
         // show the login screen
-        // hard-code login for time being - done in background so we don't block the main UI thread
         
-        [PFUser logInWithUsernameInBackground:@"blanyado" password:@"steer1" block:^(PFUser *user, NSError *error) {
-            
-            //check if there was a problem logging in
-            if (error) {
-                NSLog(@"There was an error logging in!");
-            } else {
-                NSLog(@"You're in BABY!!!!");
-                //call our method (that we've written ourself)
-                [self fetchUsers];
-            }
-        }];
+        [self performSegueWithIdentifier:@"ShowLogin" sender:self];
+    
     }
 }
 
@@ -200,13 +193,39 @@
         /// we're passing through this to messgaes controller
         
         messagesController.selectedUser = user;
+        
+    }  else if ([segue.identifier isEqualToString:@"ShowLogin"]) {
+        
+        // get a reference to the navigation controller for the login screen
+        UINavigationController *navController = [segue destinationViewController];
+        
+        //ask the navigation controller for a reference to the first (and only) view controller
+        BSLLoginTableViewController *loginController = (BSLLoginTableViewController *)navController.topViewController;
+        
+        loginController.delegate = self;
     }
+        
     
     
     // Get the new view controller using [segue destinationViewController].
     // Pass the selected object to the new view controller.
 }
 
+
+#pragma BSLLoginTableViewControllerDelegate
+
+-(void)loginTableViewControllerDidLogin:(BSLLoginTableViewController *)controller {
+    
+    //dismiss the login screen
+    [self dismissViewControllerAnimated:YES completion:nil];
+    
+}
+
+-(IBAction)logoutPressed:(id)sender {
+    
+    [PFUser logOut];
+    [self performSegueWithIdentifier:@"ShowLogin" sender:self];
+}
 
 
 @end
